@@ -1,17 +1,17 @@
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Suit {
-    CLUBS = 0,
-    HEARTS = 1,
-    SPADES = 2,
-    DIAMONDS = 3,
+    Clubs = 0,
+    Hearts = 1,
+    Spades = 2,
+    Diamonds = 3,
 }
 impl Suit {
     fn from_num(num: usize) -> Option<Self> {
         match num {
-            0 => Some(Self::CLUBS),
-            1 => Some(Self::HEARTS),
-            2 => Some(Self::SPADES),
-            3 => Some(Self::DIAMONDS),
+            0 => Some(Self::Clubs),
+            1 => Some(Self::Hearts),
+            2 => Some(Self::Spades),
+            3 => Some(Self::Diamonds),
             _ => None,
         }
     }
