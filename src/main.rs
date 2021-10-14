@@ -33,7 +33,7 @@ pub fn is_sequence((c1, c2, c3): (Card, Card, Card)) -> bool {
     let c1 = suites[1] as u32;
     let c2 = suites[2] as u32;
 
-    return (c0 + 2 == c1 + 1 && c1 + 1 == c2) || suites == [Rank::A, Rank::Queen, Rank::King];
+    (c0 + 2 == c1 + 1 && c1 + 1 == c2) || suites == [Rank::A, Rank::Queen, Rank::King]
 }
 fn is_same_suit(cards: (Card, Card, Card)) -> bool {
     cards.0.suit == cards.1.suit && cards.1.suit == cards.2.suit
@@ -63,7 +63,7 @@ fn get_hand(cards: (Card, Card, Card)) -> Hand {
     if is_two_same_rank(cards) {
         return Hand::Pair;
     }
-    return Hand::HighCard;
+    Hand::HighCard
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -118,31 +118,29 @@ impl HandTable {
             None
         } else if expected_pay > low_return {
             Some(guess)
+        } else if let Some(idx) = check_idx.next() {
+            let mut guesses = (0..guess.pay[idx - 1].unwrap())
+                .rev()
+                .map(|guess_pay| {
+                    let mut guess = guess.clone();
+                    guess.pay[idx] = Some(guess_pay);
+                    self.build_paytable(guess, low_return, high_return)
+                })
+                .flatten();
+            guesses.next()
         } else {
-            if let Some(idx) = check_idx.next() {
-                let mut guesses = (0..guess.pay[idx - 1].unwrap())
-                    .rev()
-                    .map(|guess_pay| {
-                        let mut guess = guess.clone();
-                        guess.pay[idx] = Some(guess_pay);
-                        self.build_paytable(guess, low_return, high_return)
-                    })
-                    .filter(|guess| guess.is_some())
-                    .map(|guess| guess.unwrap());
-                guesses.next()
-            } else {
-                None
-            }
+            None
         }
     }
 }
+pub struct PrintTable {}
 impl std::fmt::Display for HandTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:^20}|{:>6}\n", "Hand", "n")?;
-        write!(f, "-----------------------------\n")?;
+        writeln!(f, "{:^20}|{:>6}", "Hand", "n")?;
+        writeln!(f, "----------------------------")?;
         for (i, num) in self.hands.iter().enumerate() {
             let hand: Hand = i.into();
-            write!(f, "{:^20}|{:>6}\n", format!("{:?}", hand), num)?;
+            writeln!(f, "{:^20}|{:>6}", format!("{:?}", hand), num)?;
         }
         Ok(())
     }
@@ -173,7 +171,7 @@ fn generate_all_games() {
     let pay_table = table
         .build_paytable(
             HandPayGuess {
-                pay: [Some(10), None, None, None, None, Some(0)],
+                pay: [Some(250), None, None, None, None, Some(0)],
             },
             0.99,
             1.00,
