@@ -3,6 +3,91 @@ use rand::prelude::*;
 pub struct Points {
     points: Vec<Vector2<f32>>,
 }
+/// gets min along with index of min
+fn find_min(points: &[Vector2<f32>]) -> (usize, Vector2<f32>) {
+    points.iter().cloned().enumerate().fold(
+        (usize::MAX, Vector2::new(f32::MAX, f32::MAX)),
+        |acc, x| {
+            if x.1.x < acc.1.x {
+                x
+            } else {
+                acc
+            }
+        },
+    )
+}
+/// gets max along with index of max
+fn find_max(points: &[Vector2<f32>]) -> (usize, Vector2<f32>) {
+    points.iter().cloned().enumerate().fold(
+        (usize::MAX, Vector2::new(f32::MIN, f32::MIN)),
+        |acc, x| {
+            if x.1.x > acc.1.x {
+                x
+            } else {
+                acc
+            }
+        },
+    )
+}
+/// splits into two datasets along line with first being above line and second being below line
+fn split(
+    points: &[Vector2<f32>],
+    line_start: Vector2<f32>,
+    line_end: Vector2<f32>,
+) -> (Vec<Vector2<f32>>, Vec<Vector2<f32>>) {
+    todo!("split into lower and upper")
+}
+/// Calculates connvex hull using quick hull
+pub fn psudo_hull(points: &mut Vec<Vector2<f32>>) -> Vec<Vector2<f32>> {
+    let (min_index, min) = find_min(points);
+    let (max_index, max) = find_max(points);
+
+    points.swap_remove(min_index);
+    points.swap_remove(max_index);
+    let (upper, lower) = split(points, max, min);
+    let mut upper_hull = hull_inner(upper, max, min);
+    let mut lower_hull = hull_inner(lower, max, min);
+    let mut hull = vec![max, min];
+    hull.append(&mut upper_hull);
+    hull.append(&mut lower_hull);
+    return hull;
+    /*
+       let (min,max) = find_min_max;
+       points.remove(min)
+       points.remove(max)
+       hull.push([min,max])
+       let upper = find_upper(max,min,points)
+       let lower  = find_lower(max,min,points)
+         let upper = hull_half(find_upper(points),point,line_start,line_end);
+            let lower = hull_half(find_lower(points),point,line_start,line_end);
+            let mut hull = vec![point];
+            hull.append(&mut upper);
+            hull.append(&mut lower);
+            return hull
+
+
+
+
+       fn hull_half(points: &Vec<Vector2<f32>>,line_start,line_end){
+            let point = find_furthest(line_start,line_end,points);
+            let triangle  = [point,line_start,line_remove]
+            remove_inside_triangle(triangle,points);
+            let upper = hull_half(find_upper(points),point,line_start,line_end);
+            let lower = hull_half(find_lower(points),point,line_start,line_end);
+            let mut hull = vec![point];
+            hull.append(&mut upper);
+            hull.append(&mut lower);
+            return hull
+       }
+    */
+}
+fn hull_inner(
+    points: Vec<Vector2<f32>>,
+    line_start: Vector2<f32>,
+    line_end: Vector2<f32>,
+) -> Vec<Vector2<f32>> {
+    todo!()
+}
 /// NOTE TO FUTURE ME READ THIS
 ///https://steamcdn-a.akamaihd.net/apps/valve/2014/DirkGregorius_ImplementingQuickHull.pdf
 impl Points {
@@ -132,13 +217,33 @@ fn main() {
         "norm_squared: {}",
         Vector2::new(1.0f32, 1.0f32).norm_squared()
     );
-    let points = Points::rand(10);
-    hull(points);
+    let mut points = Points::rand(10);
+    psudo_hull(&mut points.points);
     println!("Hello, world!");
 }
 #[cfg(test)]
 mod test {
     use super::*;
+    #[test]
+    fn min() {
+        let points = [
+            Vector2::new(0.0, 0.0),
+            Vector2::new(1.0, 0.0),
+            Vector2::new(0.5, 1.0),
+        ];
+        let min = find_min(&points);
+        assert_eq!(min, (0, Vector2::new(0.0, 0.0)));
+    }
+    #[test]
+    fn max() {
+        let points = [
+            Vector2::new(0.0, 0.0),
+            Vector2::new(1.0, 0.0),
+            Vector2::new(0.5, 1.0),
+        ];
+        let min = find_max(&points);
+        assert_eq!(min, (1, Vector2::new(1.0, 0.0)));
+    }
     #[test]
     fn basic() {
         let triangle = [
