@@ -6,15 +6,6 @@ pub struct Points {
 /// NOTE TO FUTURE ME READ THIS
 ///https://steamcdn-a.akamaihd.net/apps/valve/2014/DirkGregorius_ImplementingQuickHull.pdf
 impl Points {
-    fn simple() -> Self {
-        Self {
-            points: vec![
-                Vector2::new(0.0, 0.0),
-                Vector2::new(0.5, 0.5),
-                Vector2::new(1.0, 0.0),
-            ],
-        }
-    }
     /// Builds random inside of unit square
     fn rand(number_points: usize) -> Self {
         let mut rng = rand::thread_rng();
@@ -26,11 +17,11 @@ impl Points {
     }
 }
 /// Finds convex hull, requires at least one point to generate hull
-pub fn hull(points: &Points) {
+pub fn hull(mut points: Points) -> Vec<Vector2<f32>> {
     let min_x = points
         .points
         .iter()
-        .fold((Vector2::new(f32::MAX, f32::MAX)), |acc, x| {
+        .fold(Vector2::new(f32::MAX, f32::MAX), |acc, x| {
             if x.x < acc.x {
                 *x
             } else {
@@ -40,7 +31,7 @@ pub fn hull(points: &Points) {
     let max_x = points
         .points
         .iter()
-        .fold((Vector2::new(f32::MIN, f32::MIN)), |acc, x| {
+        .fold(Vector2::new(f32::MIN, f32::MIN), |acc, x| {
             if x.x > acc.x {
                 *x
             } else {
@@ -67,6 +58,37 @@ pub fn hull(points: &Points) {
                 acc
             }
         });
+    let mut hull = vec![max_x, min_x];
+    loop {
+        if points.points.len() == 0 {
+            break;
+        }
+        let (max_distance_point, max_dist) = points
+            .points
+            .iter()
+            .map(|p| {
+                let a = p - min_x;
+                let line = max_x - min_x;
+                (
+                    *p,
+                    a.norm_squared() - (a.dot(&line).powf(2.0) / line.norm_squared()),
+                )
+            })
+            .fold((Vector2::new(0.0, 0.0), 0.0), |acc, x| {
+                if x.1 > acc.1 {
+                    x
+                } else {
+                    acc
+                }
+            });
+        hull.push(max_distance_point);
+        let filtered = points
+            .points
+            .iter()
+            .filter(|p| **p != max_distance_point)
+            .copied();
+        points.points = filtered.collect();
+    }
     println!(
         "max distance point: {},distance: {}",
         max_distance_point, max_dist
@@ -86,6 +108,7 @@ pub fn hull(points: &Points) {
     for out in outside_triangle {
         println!("outside triangle: {}", out);
     }
+    todo!("should never get to here, need to clean up")
 }
 fn sign(p1: Vector2<f32>, p2: Vector2<f32>, p3: Vector2<f32>) -> f32 {
     (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y)
@@ -110,7 +133,7 @@ fn main() {
         Vector2::new(1.0f32, 1.0f32).norm_squared()
     );
     let points = Points::rand(10);
-    hull(&points);
+    hull(points);
     println!("Hello, world!");
 }
 #[cfg(test)]
