@@ -1,5 +1,18 @@
 use nalgebra::Vector2;
 use rand::prelude::*;
+use tokio::{
+    fs::File,
+    io::{self, AsyncWriteExt},
+};
+fn make_writable(data: &[Vector2<f32>]) -> [Vec<f32>; 2] {
+    let mut x = vec![];
+    let mut y = vec![];
+    for v in data.iter() {
+        x.push(v.x);
+        y.push(v.y);
+    }
+    return [x, y];
+}
 pub struct Points {
     points: Vec<Vector2<f32>>,
 }
@@ -35,7 +48,23 @@ fn split(
     line_start: Vector2<f32>,
     line_end: Vector2<f32>,
 ) -> (Vec<Vector2<f32>>, Vec<Vector2<f32>>) {
-    todo!("split into lower and upper")
+    let mut upper = vec![];
+    let mut lower = vec![];
+    for p in points.iter().copied() {
+        if is_above(p, line_start, line_end) {
+            upper.push(p)
+        } else {
+            lower.push(p)
+        }
+    }
+    return (upper, lower);
+}
+fn is_above(point: Vector2<f32>, line_start: Vector2<f32>, line_end: Vector2<f32>) -> bool {
+    let line = line_end - line_start;
+    let point = point - line_start;
+    let slope = line.y / line.x;
+    let y = point.x * slope;
+    y < point.y
 }
 /// Calculates connvex hull using quick hull
 pub fn psudo_hull(points: &mut Vec<Vector2<f32>>) -> Vec<Vector2<f32>> {
@@ -81,126 +110,47 @@ pub fn psudo_hull(points: &mut Vec<Vector2<f32>>) -> Vec<Vector2<f32>> {
        }
     */
 }
-fn hull_inner(
-    points: Vec<Vector2<f32>>,
+/// finds firhtest point from line and returns index in array
+fn find_furthest(
+    points: &[Vector2<f32>],
     line_start: Vector2<f32>,
     line_end: Vector2<f32>,
-) -> Vec<Vector2<f32>> {
-    todo!()
-}
-/// NOTE TO FUTURE ME READ THIS
-///https://steamcdn-a.akamaihd.net/apps/valve/2014/DirkGregorius_ImplementingQuickHull.pdf
-impl Points {
-    /// Builds random inside of unit square
-    fn rand(number_points: usize) -> Self {
-        let mut rng = rand::thread_rng();
-        Points {
-            points: (0..number_points)
-                .map(|_| Vector2::new(rng.gen(), rng.gen()))
-                .collect(),
-        }
-    }
-}
-/// Finds convex hull, requires at least one point to generate hull
-pub fn hull(mut points: Points) -> Vec<Vector2<f32>> {
-    let min_x = points
-        .points
+) -> (usize, Vector2<f32>) {
+    let (index, cord, dist_squared) = points
         .iter()
-        .fold(Vector2::new(f32::MAX, f32::MAX), |acc, x| {
-            if x.x < acc.x {
-                *x
-            } else {
-                acc
-            }
-        });
-    let max_x = points
-        .points
-        .iter()
-        .fold(Vector2::new(f32::MIN, f32::MIN), |acc, x| {
-            if x.x > acc.x {
-                *x
-            } else {
-                acc
-            }
-        });
-    println!("min x: {}", min_x);
-    println!("max x: {}", max_x);
-    let (max_distance_point, max_dist) = points
-        .points
-        .iter()
+        .cloned()
+        .enumerate()
         .map(|p| {
-            let a = p - min_x;
-            let line = max_x - min_x;
+            let a = p.1 - line_start;
+            let line = line_end - line_start;
             (
-                *p,
+                p.0,
+                p.1,
                 a.norm_squared() - (a.dot(&line).powf(2.0) / line.norm_squared()),
             )
         })
-        .fold((Vector2::new(0.0, 0.0), 0.0), |acc, x| {
-            if x.1 > acc.1 {
+        .fold((0, Vector2::new(0.0, 0.0), 0.0), |acc, x| {
+            if x.2 > acc.2 {
                 x
             } else {
                 acc
             }
         });
-    let mut hull = vec![max_x, min_x];
-    loop {
-        if points.points.len() == 0 {
-            break;
-        }
-        let (max_distance_point, max_dist) = points
-            .points
-            .iter()
-            .map(|p| {
-                let a = p - min_x;
-                let line = max_x - min_x;
-                (
-                    *p,
-                    a.norm_squared() - (a.dot(&line).powf(2.0) / line.norm_squared()),
-                )
-            })
-            .fold((Vector2::new(0.0, 0.0), 0.0), |acc, x| {
-                if x.1 > acc.1 {
-                    x
-                } else {
-                    acc
-                }
-            });
-        hull.push(max_distance_point);
-        let filtered = points
-            .points
-            .iter()
-            .filter(|p| **p != max_distance_point)
-            .copied();
-        points.points = filtered.collect();
-    }
-    println!(
-        "max distance point: {},distance: {}",
-        max_distance_point, max_dist
-    );
-    let distances_squared = points.points.iter().map(|p| {
-        let a = p - min_x;
-        let line = max_x - min_x;
-        a.norm_squared() - (a.dot(&line).powf(2.0) / line.norm_squared())
-    });
-    for d in distances_squared {
-        println!("distance squared: {}", d);
-    }
-    let outside_triangle = points
-        .points
+    (index, cord)
+}
+/// removes all points lying inside of triangle
+fn remove_triangle(points: &mut Vec<Vector2<f32>>, triangle: [Vector2<f32>; 3]) {
+    let new_points = points
         .iter()
-        .filter(|x| in_triangle([min_x, max_x, max_distance_point], **x));
-    for out in outside_triangle {
-        println!("outside triangle: {}", out);
-    }
-    todo!("should never get to here, need to clean up")
+        .copied()
+        .filter(|point| !is_in_triangle(*point, triangle))
+        .collect();
+    *points = new_points;
 }
-fn sign(p1: Vector2<f32>, p2: Vector2<f32>, p3: Vector2<f32>) -> f32 {
-    (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y)
-}
+
 /// finds out of is in triangle
 /// https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
-fn in_triangle(triangle: [Vector2<f32>; 3], point: Vector2<f32>) -> bool {
+fn is_in_triangle(point: Vector2<f32>, triangle: [Vector2<f32>; 3]) -> bool {
     let d1 = sign(point, triangle[0], triangle[1]);
     let d2 = sign(point, triangle[1], triangle[2]);
     let d3 = sign(point, triangle[2], triangle[0]);
@@ -208,18 +158,54 @@ fn in_triangle(triangle: [Vector2<f32>; 3], point: Vector2<f32>) -> bool {
     let has_pos = (d1 > 0.0) || (d2 > 0.0) || (d3 > 0.0);
     !(has_neg && has_pos)
 }
-fn main() {
-    println!(
-        "norm_squared: {}",
-        Vector2::new(1.0f32, 0.0f32).norm_squared()
-    );
-    println!(
-        "norm_squared: {}",
-        Vector2::new(1.0f32, 1.0f32).norm_squared()
-    );
-    let mut points = Points::rand(10);
-    psudo_hull(&mut points.points);
-    println!("Hello, world!");
+fn sign(p1: Vector2<f32>, p2: Vector2<f32>, p3: Vector2<f32>) -> f32 {
+    (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y)
+}
+fn hull_inner(
+    mut points: Vec<Vector2<f32>>,
+    line_start: Vector2<f32>,
+    line_end: Vector2<f32>,
+) -> Vec<Vector2<f32>> {
+    if points.len() == 0 {
+        return vec![];
+    }
+    let (furthest_index, furthest) = find_furthest(&points, line_start, line_end);
+    points.swap_remove(furthest_index);
+    let triangle = [line_start, line_end, furthest];
+    remove_triangle(&mut points, triangle);
+    let (upper, lower) = split(&points, line_start, furthest);
+    let mut upper = hull_inner(upper, line_start, furthest);
+    let mut lower = hull_inner(lower, furthest, line_end);
+    let mut hull = vec![furthest];
+    hull.append(&mut upper);
+    hull.append(&mut lower);
+    return hull;
+}
+fn rand_points(n: usize) -> Vec<Vector2<f32>> {
+    let mut rng = thread_rng();
+
+    (0..n).map(|_| Vector2::new(rng.gen(), rng.gen())).collect()
+}
+/// NOTE TO FUTURE ME READ THIS
+///https://steamcdn-a.akamaihd.net/apps/valve/2014/DirkGregorius_ImplementingQuickHull.pdf
+#[tokio::main]
+async fn main() -> io::Result<()> {
+    let mut points = rand_points(1000);
+    {
+        let mut f = File::create("points.json").await?;
+        let mut points_data =
+            serde_json::to_string_pretty(&make_writable(&points)).expect("failed to parse");
+        f.write_all(points_data.as_bytes()).await?;
+    }
+
+    let hull = psudo_hull(&mut points);
+    {
+        let mut f = File::create("hull.json").await?;
+        let mut hull_data =
+            serde_json::to_string_pretty(&make_writable(&hull)).expect("failed to parse");
+        f.write_all(hull_data.as_bytes()).await?;
+    }
+    Ok(())
 }
 #[cfg(test)]
 mod test {
@@ -251,7 +237,8 @@ mod test {
             Vector2::new(1.0, 0.0),
             Vector2::new(0.5, 1.0),
         ];
-        assert_eq!(in_triangle(triangle, Vector2::new(0.5, 0.25)), true);
-        assert_eq!(in_triangle(triangle, Vector2::new(1.5, 0.25)), false);
+        assert_eq!(is_in_triangle(Vector2::new(0.5, 0.25), triangle), true);
+        assert_eq!(is_in_triangle(Vector2::new(1.5, 0.25), triangle), false);
+        assert_eq!(is_in_triangle(Vector2::new(0.5, 1.25), triangle), false);
     }
 }
