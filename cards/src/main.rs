@@ -2,6 +2,7 @@
 mod rank;
 mod suit;
 pub use rank::Rank;
+use std::cmp::Ordering;
 pub use suit::Suit;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -26,6 +27,48 @@ impl From<usize> for Hand {
         }
     }
 }
+impl PartialOrd for Hand {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some((*other as usize).cmp(&(*self as usize)))
+    }
+}
+fn optimal_play(
+    cards: [Card; 3],
+    paytable: [usize; Hand::HighCard as usize + 1],
+) -> [Option<Card>; 3] {
+    let deck = generate_deck();
+    let mut switch_tables = vec![];
+    for i in 0..cards.len() {
+        switch_tables.push(HandTable::default());
+        for card in deck.iter() {
+            if !cards.contains(card) {
+                let mut new_hand = cards.clone();
+                new_hand[i] = *card;
+                switch_tables[i].push_sequence(new_hand);
+            }
+        }
+    }
+    let mut max_return = 0.0f32;
+    let mut max_idx = 0;
+    for i in 0..switch_tables.len() {
+        let pay = switch_tables[i].calcualte_return_full(&paytable);
+        if pay > max_return {
+            max_return = pay;
+            max_idx = i;
+        }
+    }
+    let current_hand = get_hand(&cards);
+    let current_return = paytable[current_hand as usize] as f32;
+    if max_return > current_return {
+        println!("max return: {}, i = {}", max_return, max_idx);
+        let mut out = [Some(cards[0]), Some(cards[1]), Some(cards[2])];
+        out[max_idx] = None;
+        out
+    } else {
+        println!("current return: {}", current_return);
+        [Some(cards[0]), Some(cards[1]), Some(cards[2])]
+    }
+}
 pub fn is_sequence((c1, c2, c3): (Card, Card, Card)) -> bool {
     let mut suites = vec![c1.rank, c2.rank, c3.rank];
     suites.sort();
@@ -46,27 +89,27 @@ fn is_two_same_rank((c1, c2, c3): (Card, Card, Card)) -> bool {
     suites.sort();
     suites[0] == suites[1] || suites[1] == suites[2]
 }
-fn get_hand(cards: (Card, Card, Card)) -> Hand {
-    if is_sequence(cards) {
-        if is_same_suit(cards) {
+fn get_hand(cards: &[Card; 3]) -> Hand {
+    if is_sequence((cards[0], cards[1], cards[2])) {
+        if is_same_suit((cards[0], cards[1], cards[2])) {
             return Hand::StraightFlush;
         } else {
             return Hand::Straight;
         }
     }
-    if is_same_suit(cards) {
+    if is_same_suit((cards[0], cards[1], cards[2])) {
         return Hand::Flush;
     }
-    if is_same_rank(cards) {
+    if is_same_rank((cards[0], cards[1], cards[2])) {
         return Hand::ThreeOfAKind;
     }
-    if is_two_same_rank(cards) {
+    if is_two_same_rank((cards[0], cards[1], cards[2])) {
         return Hand::Pair;
     }
     Hand::HighCard
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Card {
     pub rank: Rank,
     pub suit: Suit,
@@ -83,12 +126,21 @@ struct HandPayGuess {
 struct HandTable {
     hands: [usize; Hand::HighCard as usize + 1],
 }
+impl std::ops::Add for HandTable {
+    type Output = Self;
+    fn add(mut self, other: Self) -> Self {
+        for i in 0..self.hands.len() {
+            self.hands[i] += other.hands[i]
+        }
+        self
+    }
+}
 impl HandTable {
-    pub fn push_sequence(&mut self, cards: (Card, Card, Card)) {
-        let hand = get_hand(cards);
+    pub fn push_sequence(&mut self, cards: [Card; 3]) {
+        let hand = get_hand(&cards);
         self.hands[hand as usize] += 1;
     }
-    pub fn calculate_pay(&self, guess: &HandPayGuess) -> f32 {
+    pub fn calculate_return(&self, guess: &HandPayGuess) -> f32 {
         let total: usize = self.hands.iter().sum();
         let probs = self.hands.iter().map(|n| *n as f32 / (total as f32));
         probs
@@ -96,6 +148,14 @@ impl HandTable {
             .filter(|(_prob, pay)| pay.is_some())
             .map(|(prob, pay)| (prob, pay.unwrap()))
             .map(|(prob, pay)| prob * (pay as f32))
+            .fold(0.0, |acc, x| acc + x)
+    }
+    fn calcualte_return_full(&self, guess: &[usize; Hand::HighCard as usize + 1]) -> f32 {
+        let total: usize = self.hands.iter().sum();
+        let probs = self.hands.iter().map(|n| *n as f32 / (total as f32));
+        probs
+            .zip(guess.iter())
+            .map(|(prob, pay)| prob * (*pay as f32))
             .fold(0.0, |acc, x| acc + x)
     }
     /// Uses brute force to find the pay table that fits inside
@@ -113,7 +173,7 @@ impl HandTable {
             .enumerate()
             .filter(|(_i, pay)| pay.is_none())
             .map(|(i, _pay)| i);
-        let expected_pay = self.calculate_pay(&guess);
+        let expected_pay = self.calculate_return(&guess);
         if expected_pay > high_return {
             None
         } else if expected_pay > low_return {
@@ -162,7 +222,7 @@ fn generate_all_games() {
                     let c1 = deck[i];
                     let c2 = deck[j];
                     let c3 = deck[k];
-                    table.push_sequence((c1, c2, c3));
+                    table.push_sequence([c1, c2, c3]);
                 }
             }
         }
@@ -178,7 +238,7 @@ fn generate_all_games() {
         )
         .unwrap();
     println!("{:?}", pay_table);
-    println!("return: {}", table.calculate_pay(&pay_table));
+    println!("return: {}", table.calculate_return(&pay_table));
 }
 fn main() -> Result<(), ()> {
     generate_all_games();
@@ -187,6 +247,41 @@ fn main() -> Result<(), ()> {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[test]
+    fn t_optimal_play() {
+        let hand = [
+            Card {
+                rank: Rank::Eight,
+                suit: Suit::Clubs,
+            },
+            Card {
+                rank: Rank::Nine,
+                suit: Suit::Clubs,
+            },
+            Card {
+                rank: Rank::Ten,
+                suit: Suit::Clubs,
+            },
+        ];
+        let best_hand = optimal_play(hand, [1, 0, 0, 0, 0, 0]);
+        assert_eq!(
+            best_hand,
+            [
+                Some(Card {
+                    rank: Rank::Eight,
+                    suit: Suit::Clubs,
+                }),
+                Some(Card {
+                    rank: Rank::Nine,
+                    suit: Suit::Clubs,
+                }),
+                Some(Card {
+                    rank: Rank::Ten,
+                    suit: Suit::Clubs,
+                }),
+            ]
+        );
+    }
     #[test]
     fn sequence() {
         let hand = (

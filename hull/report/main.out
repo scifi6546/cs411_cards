@@ -1,0 +1,7 @@
+\BOOKMARK [1][-]{section.1}{Find the order of growth using the Master Theorem: \(15 points\)}{}% 1
+\BOOKMARK [2][-]{subsection.1.1}{T\(n\) = 4T\(n/2\)+n, T\(1\)=1}{section.1}% 2
+\BOOKMARK [2][-]{subsection.1.2}{T\(n\) = 4T\(n/2\)+n2,T\(1\)=1}{section.1}% 3
+\BOOKMARK [2][-]{subsection.1.3}{T\(n\) = 4T\(n/2\)+n3,T\(1\)=1}{section.1}% 4
+\BOOKMARK [1][-]{section.2}{Estimate how many searches will be needed to justify the time spent presorting an array of 1,000,000 elements if sorting is done with mergesort and searching is done with binary search. \(You may assume that all searches are for elements known to be in the array.\) \(15 points\)}{}% 5
+\BOOKMARK [1][-]{section.3}{Implement quickhull in the language of your choice. Turn in a copy of your source code.}{}% 6
+\BOOKMARK [2][-]{subsection.3.1}{Test using n = 10, 100, 1000, and 10000 2D points randomly distributed inside the unit square. What is your run time for each n? \(100 points\)}{section.3}% 7

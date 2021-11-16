@@ -1,4 +1,148 @@
-use nalgebra::Vector2;
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{CS 411 F21 HW4}
+\author{Nicholas Alexeev }
+\date{\today}
+
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+\begin{document}
+
+\maketitle
+\maketitle
+\section{Find the order of growth using the Master Theorem:  (15 points)}
+\subsection{$T(n) = 4T(n/2)+n, T(1)=1$}
+$$
+f(n) = n \in \Theta\left(n\right)
+$$
+
+$$
+d=1
+$$
+
+$$
+a=4
+$$
+
+$$
+b=2
+$$
+
+$$
+a > b^d = 2^1
+$$
+Therefore
+$$
+T(n)\in \Theta\left(n^1\right)
+$$
+\subsection{$T(n) = 4T(n/2)+n^2,T(1)=1$}
+$$
+f(n) = n^2 \in \Theta\left(n^2\right)
+$$
+
+$$
+d=2
+$$
+
+$$
+a=4
+$$
+
+$$
+b=2
+$$
+
+$$
+a=4=b^d=4
+$$
+Therefore
+$$
+T(n)\in\Theta\left(n^2\log n\right)
+$$
+\subsection{$T(n) = 4T(n/2)+n^3,T(1)=1$}
+$$
+f(n) = n^3
+$$
+
+$$
+d=3
+$$
+
+$$
+a=4
+$$
+
+$$
+b=2
+$$
+
+$$
+a<b^d=8
+$$
+Therefore
+$$
+T(n)\in \Theta \left(n^{\log_24}\right) = \Theta \left(n^2\right)
+$$
+\section{Estimate how many searches will be needed to justify the time spent presorting an array of 1,000,000 elements if sorting is done with mergesort and searching is done with binary search.  (You may assume that all searches are for elements known to be in the array.)  (15 points)}
+$$
+n\log_2n+k\log_2n\leq kn/2
+$$
+
+$$
+k\geq \frac{n\log_2n}{n/2-\log_2n}
+$$
+Inputting 1,000,000 results in \[k=40\].
+The minimum number of searches is roughly 40.
+\section{Implement quickhull in the language of your choice.  Turn in a copy of your
+source code.}
+\subsection{Test using n = 10, 100, 1000, and 10000 2D points randomly distributed inside the unit square.  What is your run time for each n?  (100 points)}
+\begin{figure}[h!]
+    \includegraphics[width=8cm]{10 points.png}
+    \caption{10 points, took 0.000015283 seconds to compute.}
+\end{figure}
+\begin{figure}[h!]
+    \includegraphics[width=8cm]{100 points.png}
+    \caption{100 points, took 0.000027002 seconds to compute.}
+\end{figure}
+\begin{figure}[h!]
+    \includegraphics[width=8cm]{1000 points.png}
+    \caption{1000 points, took 0.000070175 seconds to compute.}
+\end{figure}
+\begin{figure}[h!]
+    \includegraphics[width=8cm]{10000 points.png}
+    \caption{1000 points, took 0.000286934 seconds to compute.}
+\end{figure}
+\newpage
+\begin{lstlisting}
+    use nalgebra::Vector2;
 use rand::prelude::*;
 use serde::Serialize;
 use std::{path::Path, time::Instant};
@@ -233,3 +377,8 @@ mod test {
         assert_eq!(is_in_triangle(Vector2::new(0.5, 1.25), triangle), false);
     }
 }
+\end{lstlisting}
+code:
+\url{https://github.com/scifi6546/cs411_cards}
+
+\end{document}
