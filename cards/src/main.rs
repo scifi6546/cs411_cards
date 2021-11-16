@@ -32,10 +32,11 @@ impl PartialOrd for Hand {
         Some((*other as usize).cmp(&(*self as usize)))
     }
 }
+/// calculates optimal play based on card
 fn optimal_play(
     cards: [Card; 3],
-    paytable: [usize; Hand::HighCard as usize + 1],
-) -> [Option<Card>; 3] {
+    paytable: &[usize; Hand::HighCard as usize + 1],
+) -> ([Option<Card>; 3], f32) {
     let deck = generate_deck();
     let mut switch_tables = vec![];
     for i in 0..cards.len() {
@@ -60,13 +61,14 @@ fn optimal_play(
     let current_hand = get_hand(&cards);
     let current_return = paytable[current_hand as usize] as f32;
     if max_return > current_return {
-        println!("max return: {}, i = {}", max_return, max_idx);
         let mut out = [Some(cards[0]), Some(cards[1]), Some(cards[2])];
         out[max_idx] = None;
-        out
+        (out, max_return)
     } else {
-        println!("current return: {}", current_return);
-        [Some(cards[0]), Some(cards[1]), Some(cards[2])]
+        (
+            [Some(cards[0]), Some(cards[1]), Some(cards[2])],
+            current_return,
+        )
     }
 }
 pub fn is_sequence((c1, c2, c3): (Card, Card, Card)) -> bool {
@@ -212,6 +214,24 @@ impl Default for HandTable {
         }
     }
 }
+fn calculate_expected_return(table: [usize; Hand::HighCard as usize + 1]) -> f32 {
+    let mut total = 0.0f32;
+    let deck = generate_deck();
+
+    for i in 0..deck.len() {
+        for j in 0..deck.len() {
+            for k in 0..deck.len() {
+                if i != j && j != k && i != k {
+                    let cards = [deck[i], deck[j], deck[k]];
+                    let (_play, play_return) = optimal_play(cards, &table);
+
+                    total += play_return / (52.0 * 51.0 * 50.0);
+                }
+            }
+        }
+    }
+    total
+}
 fn generate_all_games() {
     let deck = generate_deck();
     let mut table = HandTable::default();
@@ -240,8 +260,33 @@ fn generate_all_games() {
     println!("{:?}", pay_table);
     println!("return: {}", table.calculate_return(&pay_table));
 }
+fn run_experiment(name: &str, table: [usize; 6]) {
+    let game_return = calculate_expected_return(table);
+    println!("{} return: {}", name, game_return);
+}
 fn main() -> Result<(), ()> {
-    generate_all_games();
+    run_experiment("assignment 3", [100, 99, 9, 5, 0, 0]);
+    run_experiment("1", [100, 50, 9, 5, 0, 0]);
+    run_experiment("2", [50, 25, 5, 2, 0, 0]);
+
+    let game_return = calculate_expected_return([50, 10, 5, 2, 0, 0]);
+    println!("return: {}", game_return);
+    let game_return = calculate_expected_return([30, 10, 3, 2, 0, 0]);
+    println!("return: {}", game_return);
+    let game_return = calculate_expected_return([40, 10, 3, 2, 0, 0]);
+    println!("return: {}", game_return);
+    let game_return = calculate_expected_return([45, 10, 3, 2, 0, 0]);
+    println!("return: {}", game_return);
+    let game_return = calculate_expected_return([48, 10, 3, 2, 0, 0]);
+    println!("return: {}", game_return);
+    let game_return = calculate_expected_return([49, 10, 3, 2, 0, 0]);
+    println!("return: {}", game_return);
+    let game_return = calculate_expected_return([49, 11, 3, 2, 0, 0]);
+    println!("return: {}", game_return);
+    run_experiment("10", [49, 12, 3, 2, 0, 0]);
+    run_experiment("11", [49, 15, 3, 2, 0, 0]);
+    run_experiment("12", [49, 17, 3, 2, 0, 0]);
+    run_experiment("12", [49, 16, 3, 2, 0, 0]);
     Ok(())
 }
 #[cfg(test)]
@@ -265,7 +310,7 @@ mod test {
         ];
         let best_hand = optimal_play(hand, [1, 0, 0, 0, 0, 0]);
         assert_eq!(
-            best_hand,
+            best_hand.0,
             [
                 Some(Card {
                     rank: Rank::Eight,
